@@ -134,18 +134,18 @@ class _LoginPageState extends State<LoginPage> {
                     child: ElevatedButton(
                       onPressed: () {
 
-                        String email = emailController.text.trim();
-                        String password = passwordController.text.trim();
-
-                        if (email.isEmpty || password.isEmpty) {
-                          showMessage(context, "Please enter email and password");
-                          return; 
-                        }
-
-                        if (!isValidEmail(email)) {
-                          showMessage(context, "Please enter a valid email format");
-                          return;
-                        }
+                        // String email = emailController.text.trim();
+                        // String password = passwordController.text.trim();
+                        //
+                        // if (email.isEmpty || password.isEmpty) {
+                        //   showMessage(context, "Please enter email and password");
+                        //   return;
+                        // }
+                        //
+                        // if (!isValidEmail(email)) {
+                        //   showMessage(context, "Please enter a valid email format");
+                        //   return;
+                        // }
 
                         Navigator.push(
                           context,

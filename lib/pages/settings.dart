@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../core/local_notifications.dart';
 import 'login_page.dart';
 import 'profile.dart'; 
 
@@ -10,8 +12,42 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool notificationEnabled = true;
+class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObserver {
+  bool? activenotify;
+
+  Future<void> loadNotificationSettings() async {
+    bool? checkActiveNotify =
+    await LocalNotificationManage.checkNotificationEnabled();
+    setState(() {
+      activenotify = checkActiveNotify;
+    });
+  }
+
+  toggle(bool value) {
+    openAppSettings();
+  }
+
+  @override
+  initState() {
+    loadNotificationSettings();
+
+    WidgetsBinding.instance.addObserver(this);
+    super.initState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      loadNotificationSettings();
+    }
+    super.didChangeAppLifecycleState(state);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
   bool backupEnabled = true;
   String selectedLanguage = "English";
 
@@ -68,10 +104,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: CupertinoIcons.bell_fill,
                   title: "Notifications",
                   trailing: Switch(
-                    value: notificationEnabled,
+                    value: activenotify??false,
                     activeColor: const Color(0xFF1B75D1),
                     onChanged: (value) {
-                      setState(() => notificationEnabled = value);
+                      setState(() =>   toggle(activenotify ?? false));
                     },
                   ),
                 ),
