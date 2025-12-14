@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dashboard.dart';
-import 'signup.dart'; 
+import 'signup.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,9 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
 
   bool isValidEmail(String email) {
-    final RegExp emailRegex = RegExp(
-      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$'
-    );
+    final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegex.hasMatch(email);
   }
 
@@ -61,13 +60,10 @@ class _LoginPageState extends State<LoginPage> {
                     backgroundColor: Colors.white.withOpacity(0.95),
                     child: const CircleAvatar(
                       radius: 50,
-                      backgroundImage:
-                          AssetImage("assets/images/Logo.jpeg"),
+                      backgroundImage: AssetImage("assets/images/Logo.jpeg"),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
                   const Text(
                     "Welcome Back",
                     style: TextStyle(
@@ -76,9 +72,7 @@ class _LoginPageState extends State<LoginPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 5),
-
                   const Text(
                     "Login to continue",
                     style: TextStyle(
@@ -86,17 +80,13 @@ class _LoginPageState extends State<LoginPage> {
                       fontSize: 14,
                     ),
                   ),
-
                   const SizedBox(height: 25),
-
                   textFieldStyled(
                     controller: emailController,
-                    label: "Email or Username",
-                    icon: Icons.person,
+                    label: "Email",
+                    icon: Icons.email,
                   ),
-
                   const SizedBox(height: 18),
-
                   TextField(
                     controller: passwordController,
                     obscureText: !showPassword,
@@ -116,9 +106,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
                   Container(
                     width: double.infinity,
                     height: 50,
@@ -132,27 +120,60 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        String email = emailController.text.trim();
+                        String password = passwordController.text.trim();
 
-                        // String email = emailController.text.trim();
-                        // String password = passwordController.text.trim();
-                        //
-                        // if (email.isEmpty || password.isEmpty) {
-                        //   showMessage(context, "Please enter email and password");
-                        //   return;
-                        // }
-                        //
-                        // if (!isValidEmail(email)) {
-                        //   showMessage(context, "Please enter a valid email format");
-                        //   return;
-                        // }
+                        if (email.isEmpty || password.isEmpty) {
+                          showMessage(
+                              context, "Please enter email and password");
+                          return;
+                        }
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const HomeScreen(),
-                          ),
-                        );
+                        if (!isValidEmail(email)) {
+                          showMessage(
+                              context, "Please enter a valid email format");
+                          return;
+                        }
+
+                        try {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+
+                          await FirebaseAuth.instance
+                              .signInWithEmailAndPassword(
+                            email: email,
+                            password: password,
+                          );
+
+                          Navigator.pop(context); // Close loading dialog
+
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomeScreen(),
+                            ),
+                          );
+                        } on FirebaseAuthException catch (e) {
+                          Navigator.pop(context); // Close loading dialog
+                          String errorMessage = "Login failed";
+                          if (e.code == 'user-not-found') {
+                            errorMessage = 'No user found for that email.';
+                          } else if (e.code == 'wrong-password') {
+                            errorMessage = 'Wrong password provided.';
+                          } else {
+                            errorMessage = e.message ?? "An error occurred";
+                          }
+                          showMessage(context, errorMessage);
+                        } catch (e) {
+                          Navigator.pop(context); // Close loading dialog
+                          showMessage(context, "An error occurred: $e");
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
@@ -172,9 +193,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 15),
-
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -185,7 +204,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

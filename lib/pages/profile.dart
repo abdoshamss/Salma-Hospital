@@ -1,5 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/pages/dashboard.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'login_page.dart';
+
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
 
@@ -10,12 +16,9 @@ class MyProfileScreen extends StatefulWidget {
 class _MyProfileScreenState extends State<MyProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _displayNameCtrl =
-      TextEditingController(text: "Meriam Ibraheem");
-  final TextEditingController _emailCtrl =
-      TextEditingController(text: "meriam25@gmail.com");
-  final TextEditingController _phoneCtrl =
-      TextEditingController(text: "01789646894");
+  final TextEditingController _displayNameCtrl = TextEditingController();
+  final TextEditingController _emailCtrl = TextEditingController();
+  final TextEditingController _phoneCtrl = TextEditingController();
 
   @override
   void dispose() {
@@ -25,14 +28,52 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     super.dispose();
   }
 
-  void _saveProfile() {
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _displayNameCtrl.text = user.displayName ?? "user";
+      _emailCtrl.text = user.email ?? "";
+      _phoneCtrl.text = user.phoneNumber ?? "";
+    }
+  }
+
+  void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Profile Updated Successfully"),
-        ),
-      );
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          // Update Display Name
+          if (_displayNameCtrl.text != user.displayName) {
+            await user.updateDisplayName(_displayNameCtrl.text);
+          }
+
+          // Reload user to get latest data
+          await user.reload();
+          user = FirebaseAuth.instance.currentUser;
+
+          if (mounted) {
+            setState(() {
+              _loadUserData();
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Profile Updated Successfully")),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Error updating profile: $e")),
+            );
+          }
+        }
+      }
     }
   }
 
@@ -63,13 +104,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-
               _bottomField(label: "Old Password", controller: oldPass),
               const SizedBox(height: 15),
               _bottomField(label: "New Password", controller: newPass),
-
               const SizedBox(height: 20),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -80,11 +118,81 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Password Updated")),
-                    );
+                  onPressed: () async {
+                    String oldPassword = oldPass.text.trim();
+                    String newPassword = newPass.text.trim();
+
+                    if (oldPassword.isEmpty || newPassword.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Please fill all fields")),
+                      );
+                      return;
+                    }
+
+                    if (newPassword.length < 6) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                "New password must be at least 6 characters")),
+                      );
+                      return;
+                    }
+
+                    User? user = FirebaseAuth.instance.currentUser;
+
+                    if (user != null && user.email != null) {
+                      try {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+
+                        // Reauthenticate
+                        AuthCredential credential =
+                            EmailAuthProvider.credential(
+                          email: user.email!,
+                          password: oldPassword,
+                        );
+
+                        await user.reauthenticateWithCredential(credential);
+
+                        // Update Password
+                        await user.updatePassword(newPassword);
+
+                        Navigator.pop(context); // Close loading dialog
+                        Navigator.pop(context); // Close bottom sheet
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text("Password Updated Successfully")),
+                        );
+                      } on FirebaseAuthException catch (e) {
+                        Navigator.pop(context); // Close loading dialog
+                        String message = "Error updating password";
+                        if (e.code == 'wrong-password') {
+                          message = 'Incorrect old password.';
+                        } else if (e.code == 'weak-password') {
+                          message = 'The new password is too weak.';
+                        } else {
+                          message = e.message ?? "An error occurred";
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(message)),
+                        );
+                      } catch (e) {
+                        Navigator.pop(context); // Close loading dialog
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Error: $e")),
+                        );
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("No user logged in")),
+                      );
+                    }
                   },
                   child: const Text(
                     "Update Password",
@@ -92,6 +200,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -125,7 +234,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-
               TextField(
                 controller: newEmailCtrl,
                 decoration: InputDecoration(
@@ -137,9 +245,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 20),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -173,12 +279,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffF2F4F7),
-
       appBar: AppBar(
         backgroundColor: const Color(0xffF2F4F7),
         elevation: 0,
         centerTitle: true,
-
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
           onPressed: () {
@@ -189,7 +293,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             );
           },
         ),
-
         title: const Text(
           "My Profile",
           style: TextStyle(
@@ -199,7 +302,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           ),
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -208,7 +310,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             children: [
               _profileHeader(),
               const SizedBox(height: 25),
-
               _cardWrapper(
                 children: [
                   _buildField(
@@ -222,43 +323,35 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                       return null;
                     },
                   ),
-
                   const SizedBox(height: 20),
-
                   _buildField(
                     label: "Email Address",
                     controller: _emailCtrl,
                     editable: false,
                   ),
-
                   const SizedBox(height: 10),
-
                   _changeOption(
                     text: "Change Email",
                     onTap: _changeEmailSheet,
                   ),
-
                   const SizedBox(height: 20),
-
-                  _buildField(
-                    label: "Phone Number",
-                    controller: _phoneCtrl,
-                    editable: true,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return "Phone number is required";
-                      }
-                      if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                        return "Phone must contain only numbers";
-                      }
-                      return null;
-                    },
-                  ),
+                  // _buildField(
+                  //   label: "Phone Number",
+                  //   controller: _phoneCtrl,
+                  //   editable: true,
+                  //   validator: (value) {
+                  //     if (value == null || value.trim().isEmpty) {
+                  //       return "Phone number is required";
+                  //     }
+                  //     if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                  //       return "Phone must contain only numbers";
+                  //     }
+                  //     return null;
+                  //   },
+                  // ),
                 ],
               ),
-
               const SizedBox(height: 30),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -276,9 +369,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
@@ -301,6 +392,36 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                      (route) => false,
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.redAccent),
+                    backgroundColor: Colors.redAccent.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "Logout",
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -309,43 +430,63 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Widget _profileHeader() {
+    File? image2;
     return Column(
       children: [
-        Stack(
-          children: [
-            Container(
-              height: 120,
-              width: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                image: const DecorationImage(
-                  image: AssetImage(
-                    "assets/images/profile_picture.jpeg",
+        GestureDetector(
+          onTap: () async {
+            final ImagePicker picker = ImagePicker();
+            final XFile? image =
+                await picker.pickImage(source: ImageSource.gallery);
+            if (image != null) {
+              image2 = File(image.path);
+              print("image 2 is $image2");
+            }
+            setState(() {});
+          },
+          child: Stack(
+            children: [
+              if (image2 != null)
+                Container(
+                  height: 120,
+                  width: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
                   ),
-                  fit: BoxFit.cover,
+                  child: Image.file(image2),
+                )
+              else
+                Container(
+                  height: 120,
+                  width: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: AssetImage(
+                        "assets/images/profile_picture.jpeg",
+                      ),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  height: 42,
+                  width: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff005A9C),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                  ),
+                  child: const Icon(Icons.camera_alt, color: Colors.white),
                 ),
               ),
-            ),
-
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                height: 42,
-                width: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xff005A9C),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                ),
-                child: const Icon(Icons.camera_alt, color: Colors.white),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-
         const SizedBox(height: 16),
-
         Text(
           _displayNameCtrl.text,
           style: const TextStyle(
@@ -354,9 +495,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             color: Color(0xff111827),
           ),
         ),
-
         const SizedBox(height: 4),
-
         Text(
           _emailCtrl.text,
           style: const TextStyle(

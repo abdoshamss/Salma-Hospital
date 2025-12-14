@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dashboard.dart';
 import 'login_page.dart';
 
@@ -104,15 +105,15 @@ class _CreateAccountModernScreenState extends State<CreateAccountModernScreen> {
                         validator: (v) =>
                             v!.length < 6 ? "Min 6 characters" : null,
                       ),
-                      const SizedBox(height: 18),
-                      customField(
-                        controller: phoneCtrl,
-                        label: "Phone Number",
-                        icon: Icons.phone,
-                        keyboardType: TextInputType.phone,
-                        validator: (v) =>
-                            v!.length < 10 ? "Invalid phone number" : null,
-                      ),
+                      // const SizedBox(height: 18),
+                      // customField(
+                      //   controller: phoneCtrl,
+                      //   label: "Phone Number",
+                      //   icon: Icons.phone,
+                      //   keyboardType: TextInputType.phone,
+                      //   validator: (v) =>
+                      //       v!.length < 10 ? "Invalid phone number" : null,
+                      // ),
                       const SizedBox(height: 25),
                       Container(
                         width: double.infinity,
@@ -124,14 +125,65 @@ class _CreateAccountModernScreenState extends State<CreateAccountModernScreen> {
                           ),
                         ),
                         child: MaterialButton(
-                          onPressed: () {
+                          onPressed: () async {
                             if (_formKey.currentState!.validate()) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const HomeScreen(),
-                                ),
-                              );
+                              String email = emailCtrl.text.trim();
+                              String password = passwordCtrl.text.trim();
+
+                              try {
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+
+                                await FirebaseAuth.instance
+                                    .createUserWithEmailAndPassword(
+                                  email: email,
+                                  password: password,
+
+                                );
+
+                                if (FirebaseAuth.instance.currentUser != null) {
+                                  await FirebaseAuth.instance.currentUser!
+                                      .updateDisplayName(fullNameCtrl.text);
+                                }
+
+                                // Ideally here you would also save the User's name and phone number
+                                // to Firestore or Realtime Database, or update the User Profile.
+                                // For now we just focus on Auth.
+
+                                Navigator.pop(context); // Close loading dialog
+
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const HomeScreen(),
+                                  ),
+                                );
+                              } on FirebaseAuthException catch (e) {
+                                Navigator.pop(context);
+                                String errorMsg = "Registration failed";
+                                if (e.code == 'weak-password') {
+                                  errorMsg =
+                                      'The password provided is too weak.';
+                                } else if (e.code == 'email-already-in-use') {
+                                  errorMsg =
+                                      'The account already exists for that email.';
+                                } else {
+                                  errorMsg = e.message ?? "An error occurred";
+                                }
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(errorMsg)),
+                                );
+                              } catch (e) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Error: $e")),
+                                );
+                              }
                             }
                           },
                           child: const Text(
@@ -150,8 +202,7 @@ class _CreateAccountModernScreenState extends State<CreateAccountModernScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const LoginPage(),
+                              builder: (context) => const LoginPage(),
                             ),
                           );
                         },
