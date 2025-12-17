@@ -143,7 +143,6 @@ class _CreateAccountModernScreenState extends State<CreateAccountModernScreen> {
                                     .createUserWithEmailAndPassword(
                                   email: email,
                                   password: password,
-
                                 );
 
                                 if (FirebaseAuth.instance.currentUser != null) {

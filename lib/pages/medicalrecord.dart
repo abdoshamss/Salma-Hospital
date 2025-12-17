@@ -248,8 +248,9 @@ class _MedicalRecordScreenState extends State<MedicalRecordScreen> {
           fillColor: Colors.white.withOpacity(0.9),
         ),
         validator: (value) {
-          if (isRequired && (value == null || value.isEmpty))
+          if (isRequired && (value == null || value.isEmpty)) {
             return 'This field is required';
+          }
           return null;
         },
       ),
@@ -267,7 +268,7 @@ class _MedicalRecordScreenState extends State<MedicalRecordScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<String>(
-        value: selectedValue,
+        initialValue: selectedValue,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(
@@ -299,8 +300,9 @@ class _MedicalRecordScreenState extends State<MedicalRecordScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
-    if (picked != null)
+    if (picked != null) {
       controller.text = "${picked.day}/${picked.month}/${picked.year}";
+    }
   }
 
   Widget _dynamicListField({
@@ -501,7 +503,7 @@ class _MedicalRecordScreenState extends State<MedicalRecordScreen> {
   }
 
   Widget _iconButton(IconData iconData, VoidCallback onPressed) {
-    return Container(
+    return SizedBox(
       width: 44,
       height: 44,
       child: IconButton(

@@ -446,29 +446,19 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           },
           child: Stack(
             children: [
-              if (image2 != null)
-                Container(
-                  height: 120,
-                  width: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                  ),
-                  child: Image.file(image2),
-                )
-              else
-                Container(
-                  height: 120,
-                  width: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: AssetImage(
-                        "assets/images/profile_picture.jpeg",
-                      ),
-                      fit: BoxFit.cover,
+              Container(
+                height: 120,
+                width: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: AssetImage(
+                      "assets/images/profile_picture.jpeg",
                     ),
+                    fit: BoxFit.cover,
                   ),
                 ),
+              ),
               Positioned(
                 bottom: 0,
                 right: 0,

@@ -103,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   title: "Notifications",
                   trailing: Switch(
                     value: activeNotify ?? false,
-                    activeColor: const Color(0xFF1B75D1),
+                    activeThumbColor: const Color(0xFF1B75D1),
                     onChanged: (value) {
                       setState(() => toggle(activeNotify ?? false));
                     },

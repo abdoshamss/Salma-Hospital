@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:convert'; 
+import 'dart:convert';
 
 void main() {
   runApp(const MedicalDocumentsApp());

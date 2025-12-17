@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:gal/gal.dart';
 
 class QRScreen extends StatelessWidget {
   final String data;
@@ -42,7 +44,6 @@ class QRScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              
               Container(
                 width: 110,
                 height: 110,
@@ -58,8 +59,6 @@ class QRScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-
-              
               Text(
                 medicalData["name"] ?? "Unnamed User",
                 style: const TextStyle(
@@ -67,10 +66,7 @@ class QRScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 32),
-
-              
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -91,7 +87,6 @@ class QRScreen extends StatelessWidget {
                   backgroundColor: Colors.white,
                 ),
               ),
-
               const SizedBox(height: 24),
               const Text(
                 'Scan this QR code to safely view and help someone.',
@@ -101,18 +96,11 @@ class QRScreen extends StatelessWidget {
                   fontSize: 18,
                 ),
               ),
-
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Downloaded successfully'),
-                      ),
-                    );
-                  },
+                  onPressed: () => _downloadQrCode(context),
                   icon: const Icon(Icons.ios_share, size: 24),
                   label: const Text(
                     'Download QR Code',
@@ -133,5 +121,51 @@ class QRScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _downloadQrCode(BuildContext context) async {
+    try {
+      // Create the QR code image in memory
+      final painter = QrPainter(
+        data: data,
+        version: QrVersions.auto,
+        gapless: false,
+        color: const Color(0xFF000000),
+        emptyColor: const Color(0xFFFFFFFF),
+      );
+
+      final pic = painter.toPicture(2048);
+      final img = await pic.toImage(2048, 2048);
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      final buffer = byteData!.buffer.asUint8List();
+
+      // Check for permission and save using Gal
+      bool hasAccess = await Gal.hasAccess();
+      if (!hasAccess) hasAccess = await Gal.requestAccess();
+
+      if (hasAccess) {
+        await Gal.putImageBytes(
+          buffer,
+          name: "qr_code_${DateTime.now().millisecondsSinceEpoch}",
+        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('QR Code saved to gallery!')),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Storage permission is required.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 }
