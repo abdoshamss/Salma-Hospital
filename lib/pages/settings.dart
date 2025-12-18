@@ -225,10 +225,10 @@ class _SettingsScreenState extends State<SettingsScreen>
             const SizedBox(width: 15),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  "Yassmin Mahmoud",
-                  style: TextStyle(
+                  FirebaseAuth.instance.currentUser?.displayName ?? "User",
+                  style: const TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF0A3D62),
